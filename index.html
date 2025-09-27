@@ -52,35 +52,37 @@
 
     <tr onmouseout="rbn_stop()" onmouseover="rbn_start()">
       <td style="padding:16px;width:20%;vertical-align:middle">
-        <img src='images/pf.png' width="160">
+        <img src='images/rbn.png' width="160">
         <script type="text/javascript">
           function ever_start() {
-            document.getElementById('ever_image').style.opacity = "1";
+            document.getElementById('rbn_image').style.opacity = "1";
           }
 
           function ever_stop() {
-            document.getElementById('ever_image').style.opacity = "0";
+            document.getElementById('rbn_image').style.opacity = "0";
           }
           ever_stop()
         </script>
       </td>
       <td style="padding:8px;width:80%;vertical-align:middle">
-        <a href="https://arxiv.org/abs/2404.07431">
-			<span class="papertitle"> Parameterized Fast and Safe Tracking (FaSTrack) using DeepReach
+        <a href="https://arxiv.org/abs/2505.11755">
+			<span class="papertitle"> Reachability Barrier Networks: Learning Hamilton-Jacobi Solutions for Smooth and Flexible Control Barrier Functions
 </span>
         </a>
         <br>
+        <a href="https://sylviaherbert.com/matthew-kim">Matthew Kim</a>
+        <a href="https://willsharpless.github.io/">William Sharpless</a>
 				<strong>Hyun Joe Jeong</strong>,
-        <a href="https://scholar.google.com/citations?user=lg_3HTMAAAAJ&hl=en">Zheng Gong</a>
+        <a href="https://stonkens.github.io/">Sander Tonkens</a>
         <a href="https://smlbansal.github.io/">Somil Bansal</a>
         <a href="https://www.sylviaherbert.com/">Sylvia Herbert</a>       
 				<br>
-        <em>L4DC</em>, 2025
+        <em>CoRL Workshop on Safe and Robust Robot Learning for Operation in the Real World</em>, 2025
         <br>
-        <a href="https://arxiv.org/abs/2404.07431">arXiv</a>
+        <a href="https://arxiv.org/abs/2505.11755">arXiv</a>
         <p></p>
         <p>
-				Parameterized Fast and Safe Tracking can smoothly trade off between the navigation speed and the tracking error (therefore maneuverability) while guaranteeing obstacle avoidance in a priori unknown environments. 
+				We demonstrate that RBNs are highly accurate in low dimensions, and safer than the standard neural CBF approach in high dimensions.
         </p>
       </td>
     </tr>
