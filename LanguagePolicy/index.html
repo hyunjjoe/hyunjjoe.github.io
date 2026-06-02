@@ -277,7 +277,7 @@ footer a:hover { text-decoration: underline; }
     <p class="section-sub">Midway through the task, a person perturbs the scene by moving a placed cube back. The base VLA continues from the original instruction and misplaces the cube; the language policy observes the changed state, emits an updated language action, and steers the frozen VLA to <b>recover</b>. (Playback is 2&times; speed.)</p>
 
     <div class="panel">
-      <div class="panel-head">Base VLA vs. Language-Steered VLA</div>
+      <div class="panel-head">Base VLA vs. Language Steered VLA</div>
       <div class="task-text"><b>Instruction (&ell;<sup>task</sup>):</b> "Put the green cube in the blue basket and the red cube in the orange basket."</div>
       <div class="video-area" id="cl-video-area">
         <div class="video-container base-label">
@@ -286,7 +286,7 @@ footer a:hover { text-decoration: underline; }
         </div>
         <div class="video-container steer-label">
           <video id="vid-steer" muted playsinline preload="metadata" src="videos/langpolicy.mp4"></video>
-          <div class="vid-label">Language-Steered VLA (Ours)</div>
+          <div class="vid-label">Language Steered VLA (Ours)</div>
         </div>
       </div>
       <div class="time-bar-wrap">
@@ -363,7 +363,7 @@ footer a:hover { text-decoration: underline; }
     </div>
 
     <h3 class="subsection-title" id="qualitative">Qualitative Results</h3>
-    <p class="subsection-sub">Side-by-side rollouts on hardware: the base VLA vs. our language-steered VLA under each task and perturbation. Select a task, then a condition.</p>
+    <p class="subsection-sub">Each rollout pair shows <b>base VLA failure</b> (left) and <b>language steered VLA success</b> (right) for the selected task and perturbation. Select a task, then a condition.</p>
     <div class="qual-tabs-wrap">
       <div class="phase-tabs" id="qual-task-tabs">
         <button class="phase-tab active" data-slug="cubesort">CubeSort</button>
@@ -373,19 +373,24 @@ footer a:hover { text-decoration: underline; }
         <button class="phase-tab" data-slug="markerbowl">MarkerBowl</button>
         <button class="phase-tab" data-slug="chipscup">ChipsCup</button>
       </div>
-      <div class="seg-row" id="qual-cond-row"></div>
+      <div class="seg-row" id="qual-cond-row">
+        <span class="seg-label">Condition</span>
+        <button class="seg active" data-cond="train">Training Env</button>
+        <button class="seg" data-cond="semantic">Semantic OOD</button>
+        <button class="seg" data-cond="visual">Visual OOD</button>
+      </div>
     </div>
     <div class="panel">
-      <div class="panel-head">Base VLA vs. Language-Steered VLA</div>
+      <div class="panel-head">Base VLA (failure) vs. Language Steered VLA (success)</div>
       <div class="task-text" id="qual-task-text"></div>
       <div class="video-area" id="qual-video-area">
         <div class="video-container base-label">
           <video id="qual-vid-base" muted playsinline preload="metadata"></video>
-          <div class="vid-label">Base VLA</div>
+          <div class="vid-label">Base VLA (failure)</div>
         </div>
         <div class="video-container steer-label">
           <video id="qual-vid-steer" muted playsinline preload="metadata"></video>
-          <div class="vid-label">Language-Steered VLA (Ours)</div>
+          <div class="vid-label">Language Steered VLA (success)</div>
         </div>
       </div>
       <div class="time-bar-wrap">
@@ -623,17 +628,38 @@ initSyncedPairPlayer({
     { slug: 'markerblock', task: 'MarkerBlock', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/markerblock_train_base.mp4', steer: 'videos/qual/markerblock_train_steer.mp4' },
     { slug: 'markerblock', task: 'MarkerBlock', condition: 'Semantic OOD', condSlug: 'semantic', base: 'videos/qual/markerblock_semantic_base.mp4', steer: 'videos/qual/markerblock_semantic_steer.mp4' },
     { slug: 'markerblock', task: 'MarkerBlock', condition: 'Visual OOD', condSlug: 'visual', base: 'videos/qual/markerblock_visual_base.mp4', steer: 'videos/qual/markerblock_visual_steer.mp4' },
-    { slug: 'markerbowl', task: 'MarkerBowl', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/markerbowl_train_base.mp4', steer: 'videos/qual/markerbowl_train_steer.mp4' },
-    { slug: 'chipscup', task: 'ChipsCup', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/chipscup_train_base.mp4', steer: 'videos/qual/chipscup_train_steer.mp4' }
+    { slug: 'markerbowl', task: 'MarkerBowl', condition: 'Deploy Env', condSlug: 'deploy', base: 'videos/qual/markerbowl_train_base.mp4', steer: 'videos/qual/markerbowl_train_steer.mp4' },
+    { slug: 'chipscup', task: 'ChipsCup', condition: 'Deploy Env', condSlug: 'deploy', base: 'videos/qual/chipscup_train_base.mp4', steer: 'videos/qual/chipscup_train_steer.mp4' }
   ];
 
+  // Nominal + semantic prompts from App. tab:droid_task_descriptions; visual uses nominal.
   const QUAL_INSTR = {
-    CubeSort: 'Put the green cube in the blue basket and the red cube in the orange basket.',
-    CubeMug: 'Put the green cube in the blue mug, then place the mug in the orange basket.',
-    Microwave: 'Place the orange bowl on top of the microwave and close the microwave door.',
-    MarkerBlock: 'Place the marker and the green block on the plate.',
-    MarkerBowl: 'Put the marker in the blue bowl and put the blue bowl on the plate.',
-    ChipsCup: 'Put the chips and green cup in the basket.'
+    CubeSort: {
+      train: 'Put the green cube in the blue basket and the red cube in the orange basket.',
+      semantic: 'Put away the green cube and the red cube in similar color baskets.',
+      visual: 'Put the green cube in the blue basket and the red cube in the orange basket.'
+    },
+    CubeMug: {
+      train: 'Place the green cube in the blue mug then the blue mug in the orange basket.',
+      semantic: 'Put away the cube in the mug and the mug in the bin.',
+      visual: 'Place the green cube in the blue mug then the blue mug in the orange basket.'
+    },
+    Microwave: {
+      train: 'Place the orange bowl on top of the microwave and close the microwave door.',
+      semantic: 'Put the bowl on top of the oven and close the door.',
+      visual: 'Place the orange bowl on top of the microwave and close the microwave door.'
+    },
+    MarkerBlock: {
+      train: 'Place the marker and green block on the plate.',
+      semantic: 'Put away the pen and green block in the bowl.',
+      visual: 'Place the marker and green block on the plate.'
+    },
+    MarkerBowl: {
+      deploy: 'Put the marker in the blue bowl and put the blue bowl on the plate.'
+    },
+    ChipsCup: {
+      deploy: 'Put the chips and green cup in the basket.'
+    }
   };
 
   const condRow = document.getElementById('qual-cond-row');
@@ -651,8 +677,18 @@ initSyncedPairPlayer({
 
   function clipsForTask(slug) { return QUAL_VIDS.filter(v => v.slug === slug); }
 
+  function syncTaskTabs() {
+    taskTabs.forEach(t => t.classList.toggle('active', t.dataset.slug === taskSlug));
+  }
+
   function renderCondTabs() {
     const clips = clipsForTask(taskSlug);
+    const multi = clips.length > 1;
+    condRow.style.display = multi ? 'flex' : 'none';
+    if (!multi) {
+      condSlug = clips[0].condSlug;
+      return;
+    }
     condRow.innerHTML = '<span class="seg-label">Condition</span>' + clips.map(c =>
       `<button class="seg${c.condSlug === condSlug ? ' active' : ''}" data-cond="${c.condSlug}">${c.condition}</button>`
     ).join('');
@@ -666,25 +702,29 @@ initSyncedPairPlayer({
   }
 
   function loadClip() {
-    const clip = QUAL_VIDS.find(v => v.slug === taskSlug && v.condSlug === condSlug);
+    const clips = clipsForTask(taskSlug);
+    if (!clips.some(c => c.condSlug === condSlug)) condSlug = clips[0].condSlug;
+    const clip = clips.find(v => v.condSlug === condSlug) || clips[0];
     if (!clip) return;
-    const instr = QUAL_INSTR[clip.task] || '';
-    const condNote = clip.condSlug === 'train' ? '' : ` &middot; <b>${clip.condition}</b>`;
-    taskText.innerHTML = `<b>Task:</b> ${clip.task}${condNote}<br><b>Instruction (&ell;<sup>task</sup>):</b> &ldquo;${instr}&rdquo;`;
+    const instr = (QUAL_INSTR[clip.task] && QUAL_INSTR[clip.task][clip.condSlug]) || '';
+    taskText.innerHTML = `<b>Task:</b> ${clip.task} &middot; <b>${clip.condition}</b><br><b>Instruction (&ell;<sup>task</sup>):</b> &ldquo;${instr}&rdquo;`;
     player.setSources(clip.base, clip.steer);
   }
 
+  function selectTask(slug) {
+    taskSlug = slug;
+    const clips = clipsForTask(taskSlug);
+    if (!clips.some(c => c.condSlug === condSlug)) condSlug = clips[0].condSlug;
+    syncTaskTabs();
+    renderCondTabs();
+    loadClip();
+  }
+
   taskTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      taskSlug = tab.dataset.slug;
-      taskTabs.forEach(t => t.classList.toggle('active', t === tab));
-      const clips = clipsForTask(taskSlug);
-      if (!clips.some(c => c.condSlug === condSlug)) condSlug = clips[0].condSlug;
-      renderCondTabs();
-      loadClip();
-    });
+    tab.addEventListener('click', () => selectTask(tab.dataset.slug));
   });
 
+  syncTaskTabs();
   renderCondTabs();
   loadClip();
 })();
