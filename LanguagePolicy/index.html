@@ -119,6 +119,8 @@ nav a:hover, nav a.active { color: var(--accent); border-bottom-color: var(--acc
 .phase-img-wrap img { max-width: 100%; max-height: 430px; display: block; margin: 0 auto; }
 .phase-desc { padding: 16px 20px; font-size: 0.9rem; color: var(--text-sec); line-height: 1.62; border-top: 1px solid var(--border); background: var(--bg-alt); }
 .phase-desc b { color: var(--text); }
+.qual-tabs-wrap { margin-bottom: 10px; }
+.qual-tabs-wrap .seg-row { margin-bottom: 18px; }
 
 /* ── Video panel ── */
 .panel { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 26px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
@@ -359,6 +361,41 @@ footer a:hover { text-decoration: underline; }
       <div class="clegend" id="lg-hardware"></div>
       <div class="chart-wrap"><canvas id="chart-hardware"></canvas></div>
     </div>
+
+    <h3 class="subsection-title" id="qualitative">Qualitative Results</h3>
+    <p class="subsection-sub">Side-by-side rollouts on hardware: the base VLA vs. our language-steered VLA under each task and perturbation. Select a task, then a condition.</p>
+    <div class="qual-tabs-wrap">
+      <div class="phase-tabs" id="qual-task-tabs">
+        <button class="phase-tab active" data-slug="cubesort">CubeSort</button>
+        <button class="phase-tab" data-slug="cubemug">CubeMug</button>
+        <button class="phase-tab" data-slug="microwave">Microwave</button>
+        <button class="phase-tab" data-slug="markerblock">MarkerBlock</button>
+        <button class="phase-tab" data-slug="markerbowl">MarkerBowl</button>
+        <button class="phase-tab" data-slug="chipscup">ChipsCup</button>
+      </div>
+      <div class="seg-row" id="qual-cond-row"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">Base VLA vs. Language-Steered VLA</div>
+      <div class="task-text" id="qual-task-text"></div>
+      <div class="video-area" id="qual-video-area">
+        <div class="video-container base-label">
+          <video id="qual-vid-base" muted playsinline preload="metadata"></video>
+          <div class="vid-label">Base VLA</div>
+        </div>
+        <div class="video-container steer-label">
+          <video id="qual-vid-steer" muted playsinline preload="metadata"></video>
+          <div class="vid-label">Language-Steered VLA (Ours)</div>
+        </div>
+      </div>
+      <div class="time-bar-wrap">
+        <button class="play-btn" id="qual-play" aria-label="Play / pause">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <input type="range" class="time-bar" id="qual-slider" min="0" max="1000" value="0" />
+        <span class="time-label" id="qual-time">0:00 / 0:00</span>
+      </div>
+    </div>
   </section>
 
   <!-- REFUSAL / CALIBRATION -->
@@ -464,57 +501,70 @@ const PHASES = [
 // ══════════════════════════════════════════════════════════════
 //  Synced side-by-side video player (plays until the LONGER ends)
 // ══════════════════════════════════════════════════════════════
-(function () {
-  const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-  const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
-  const base = document.getElementById('vid-base');
-  const steer = document.getElementById('vid-steer');
-  const vids = [base, steer];
-  const playBtn = document.getElementById('cl-play');
-  const slider = document.getElementById('cl-slider');
-  const timeLbl = document.getElementById('cl-time');
-  let master = steer;                 // updated once both durations known
-  let paused = true, seeking = false;
+const ICON_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
-  function fmt(t) { if (!isFinite(t)) return '0:00'; const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ':' + String(s).padStart(2, '0'); }
+function fmtVidTime(t) {
+  if (!isFinite(t)) return '0:00';
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function initSyncedPairPlayer(cfg) {
+  const base = document.getElementById(cfg.baseId);
+  const steer = document.getElementById(cfg.steerId);
+  const playBtn = document.getElementById(cfg.playId);
+  const slider = document.getElementById(cfg.sliderId);
+  const timeLbl = document.getElementById(cfg.timeId);
+  const vids = [base, steer];
+  let master = steer, paused = true, seeking = false;
+
   function follower() { return master === base ? steer : base; }
 
   function recomputeMaster() {
     if (base.duration && steer.duration) {
       master = steer.duration >= base.duration ? steer : base;
-      timeLbl.textContent = '0:00 / ' + fmt(master.duration);
+      timeLbl.textContent = '0:00 / ' + fmtVidTime(master.duration);
     }
   }
-  base.addEventListener('loadedmetadata', recomputeMaster);
-  steer.addEventListener('loadedmetadata', recomputeMaster);
+
+  function pauseAll() {
+    vids.forEach(v => v.pause());
+    playBtn.innerHTML = ICON_PLAY;
+    paused = true;
+  }
 
   function playAll() {
     if (master.ended) vids.forEach(v => { v.currentTime = 0; });
     master.play().then(() => {
       follower().play().catch(() => {});
-      playBtn.innerHTML = ICON_PAUSE; paused = false;
+      playBtn.innerHTML = ICON_PAUSE;
+      paused = false;
     }).catch(() => { playBtn.innerHTML = ICON_PLAY; paused = true; });
   }
-  function pauseAll() { vids.forEach(v => v.pause()); playBtn.innerHTML = ICON_PLAY; paused = true; }
 
   function onTime(e) {
     if (e.target !== master || seeking) return;
     const t = master.currentTime, f = follower();
-    // keep the shorter clip in sync only while it still has frames
     if (f.duration && t <= f.duration - 0.05 && Math.abs(f.currentTime - t) > 0.2) {
       f.currentTime = t;
     } else if (f.duration && t > f.duration && !f.paused) {
-      f.pause();                       // hold last frame of the shorter clip
+      f.pause();
     }
     if (master.duration) {
       slider.value = (t / master.duration) * 1000;
-      timeLbl.textContent = fmt(t) + ' / ' + fmt(master.duration);
+      timeLbl.textContent = fmtVidTime(t) + ' / ' + fmtVidTime(master.duration);
     }
   }
+
+  function onEnded(e) {
+    if (e.target === master) { pauseAll(); slider.value = 1000; }
+  }
+
+  base.addEventListener('loadedmetadata', recomputeMaster);
+  steer.addEventListener('loadedmetadata', recomputeMaster);
   base.addEventListener('timeupdate', onTime);
   steer.addEventListener('timeupdate', onTime);
-
-  function onEnded(e) { if (e.target === master) { pauseAll(); slider.value = 1000; } }
   base.addEventListener('ended', onEnded);
   steer.addEventListener('ended', onEnded);
 
@@ -525,16 +575,118 @@ const PHASES = [
     master.currentTime = t;
     const f = follower();
     f.currentTime = Math.min(t, (f.duration || t) - 0.05);
-    timeLbl.textContent = fmt(t) + ' / ' + fmt(master.duration);
+    timeLbl.textContent = fmtVidTime(t) + ' / ' + fmtVidTime(master.duration);
   });
   slider.addEventListener('change', () => { seeking = false; });
   playBtn.addEventListener('click', () => { paused ? playAll() : pauseAll(); });
 
-  let started = false;
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting && !started) { started = true; playAll(); } });
-  }, { threshold: 0.4 });
-  io.observe(document.getElementById('cl-video-area'));
+  if (cfg.autoplayAreaId) {
+    let started = false;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting && !started) { started = true; playAll(); } });
+    }, { threshold: 0.4 });
+    io.observe(document.getElementById(cfg.autoplayAreaId));
+  }
+
+  return {
+    pauseAll,
+    setSources(baseSrc, steerSrc) {
+      pauseAll();
+      base.src = baseSrc;
+      steer.src = steerSrc;
+      slider.value = 0;
+      timeLbl.textContent = '0:00 / 0:00';
+      master = steer;
+      base.load();
+      steer.load();
+    }
+  };
+}
+
+initSyncedPairPlayer({
+  baseId: 'vid-base', steerId: 'vid-steer', playId: 'cl-play',
+  sliderId: 'cl-slider', timeId: 'cl-time', autoplayAreaId: 'cl-video-area'
+});
+
+// ── Qualitative Results (hardware task × perturbation) ──
+(function () {
+  const QUAL_VIDS = [
+    { slug: 'cubesort', task: 'CubeSort', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/cubesort_train_base.mp4', steer: 'videos/qual/cubesort_train_steer.mp4' },
+    { slug: 'cubesort', task: 'CubeSort', condition: 'Semantic OOD', condSlug: 'semantic', base: 'videos/qual/cubesort_semantic_base.mp4', steer: 'videos/qual/cubesort_semantic_steer.mp4' },
+    { slug: 'cubesort', task: 'CubeSort', condition: 'Visual OOD', condSlug: 'visual', base: 'videos/qual/cubesort_visual_base.mp4', steer: 'videos/qual/cubesort_visual_steer.mp4' },
+    { slug: 'cubemug', task: 'CubeMug', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/cubemug_train_base.mp4', steer: 'videos/qual/cubemug_train_steer.mp4' },
+    { slug: 'cubemug', task: 'CubeMug', condition: 'Semantic OOD', condSlug: 'semantic', base: 'videos/qual/cubemug_semantic_base.mp4', steer: 'videos/qual/cubemug_semantic_steer.mp4' },
+    { slug: 'cubemug', task: 'CubeMug', condition: 'Visual OOD', condSlug: 'visual', base: 'videos/qual/cubemug_visual_base.mp4', steer: 'videos/qual/cubemug_visual_steer.mp4' },
+    { slug: 'microwave', task: 'Microwave', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/microwave_train_base.mp4', steer: 'videos/qual/microwave_train_steer.mp4' },
+    { slug: 'microwave', task: 'Microwave', condition: 'Semantic OOD', condSlug: 'semantic', base: 'videos/qual/microwave_semantic_base.mp4', steer: 'videos/qual/microwave_semantic_steer.mp4' },
+    { slug: 'microwave', task: 'Microwave', condition: 'Visual OOD', condSlug: 'visual', base: 'videos/qual/microwave_visual_base.mp4', steer: 'videos/qual/microwave_visual_steer.mp4' },
+    { slug: 'markerblock', task: 'MarkerBlock', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/markerblock_train_base.mp4', steer: 'videos/qual/markerblock_train_steer.mp4' },
+    { slug: 'markerblock', task: 'MarkerBlock', condition: 'Semantic OOD', condSlug: 'semantic', base: 'videos/qual/markerblock_semantic_base.mp4', steer: 'videos/qual/markerblock_semantic_steer.mp4' },
+    { slug: 'markerblock', task: 'MarkerBlock', condition: 'Visual OOD', condSlug: 'visual', base: 'videos/qual/markerblock_visual_base.mp4', steer: 'videos/qual/markerblock_visual_steer.mp4' },
+    { slug: 'markerbowl', task: 'MarkerBowl', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/markerbowl_train_base.mp4', steer: 'videos/qual/markerbowl_train_steer.mp4' },
+    { slug: 'chipscup', task: 'ChipsCup', condition: 'Training Env', condSlug: 'train', base: 'videos/qual/chipscup_train_base.mp4', steer: 'videos/qual/chipscup_train_steer.mp4' }
+  ];
+
+  const QUAL_INSTR = {
+    CubeSort: 'Put the green cube in the blue basket and the red cube in the orange basket.',
+    CubeMug: 'Put the green cube in the blue mug, then place the mug in the orange basket.',
+    Microwave: 'Place the orange bowl on top of the microwave and close the microwave door.',
+    MarkerBlock: 'Place the marker and the green block on the plate.',
+    MarkerBowl: 'Put the marker in the blue bowl and put the blue bowl on the plate.',
+    ChipsCup: 'Put the chips and green cup in the basket.'
+  };
+
+  const condRow = document.getElementById('qual-cond-row');
+  const taskText = document.getElementById('qual-task-text');
+  const taskTabs = document.querySelectorAll('#qual-task-tabs .phase-tab');
+  if (!condRow || !taskTabs.length) return;
+
+  const player = initSyncedPairPlayer({
+    baseId: 'qual-vid-base', steerId: 'qual-vid-steer', playId: 'qual-play',
+    sliderId: 'qual-slider', timeId: 'qual-time'
+  });
+
+  let taskSlug = 'cubesort';
+  let condSlug = 'train';
+
+  function clipsForTask(slug) { return QUAL_VIDS.filter(v => v.slug === slug); }
+
+  function renderCondTabs() {
+    const clips = clipsForTask(taskSlug);
+    condRow.innerHTML = '<span class="seg-label">Condition</span>' + clips.map(c =>
+      `<button class="seg${c.condSlug === condSlug ? ' active' : ''}" data-cond="${c.condSlug}">${c.condition}</button>`
+    ).join('');
+    condRow.querySelectorAll('.seg[data-cond]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        condSlug = btn.dataset.cond;
+        renderCondTabs();
+        loadClip();
+      });
+    });
+  }
+
+  function loadClip() {
+    const clip = QUAL_VIDS.find(v => v.slug === taskSlug && v.condSlug === condSlug);
+    if (!clip) return;
+    const instr = QUAL_INSTR[clip.task] || '';
+    const condNote = clip.condSlug === 'train' ? '' : ` &middot; <b>${clip.condition}</b>`;
+    taskText.innerHTML = `<b>Task:</b> ${clip.task}${condNote}<br><b>Instruction (&ell;<sup>task</sup>):</b> &ldquo;${instr}&rdquo;`;
+    player.setSources(clip.base, clip.steer);
+  }
+
+  taskTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      taskSlug = tab.dataset.slug;
+      taskTabs.forEach(t => t.classList.toggle('active', t === tab));
+      const clips = clipsForTask(taskSlug);
+      if (!clips.some(c => c.condSlug === condSlug)) condSlug = clips[0].condSlug;
+      renderCondTabs();
+      loadClip();
+    });
+  });
+
+  renderCondTabs();
+  loadClip();
 })();
 
 // ══════════════════════════════════════════════════════════════
