@@ -147,6 +147,9 @@ nav a:hover, nav a.active { color: var(--accent); border-bottom-color: var(--acc
 .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px 14px; margin-bottom: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
 .chart-card h3 { font-size: 0.96rem; font-weight: 700; margin-bottom: 6px; }
 .chart-card .chart-note { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 12px; }
+.chart-desc { font-size: 0.85rem; color: var(--text-sec); line-height: 1.55; margin-top: 14px; }
+.chart-desc b { color: var(--text); }
+.chart-desc .hl { color: var(--steer); font-weight: 700; }
 .chart-wrap { position: relative; height: 340px; }
 .clegend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
 .clegend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; color: var(--text-sec); cursor: default; }
@@ -197,7 +200,6 @@ footer a:hover { text-decoration: underline; }
     <span class="nav-brand">Mostly Harmless VLA Steering</span>
     <a href="#overview">Overview</a>
     <a href="#method">Method</a>
-    <a href="#closedloop">Closed-Loop</a>
     <a href="#results">Results</a>
     <a href="#refusal">Calibration</a>
     <a href="#bibtex">BibTeX</a>
@@ -236,21 +238,21 @@ footer a:hover { text-decoration: underline; }
   <section class="section" id="overview">
     <h2 class="section-title">Overview</h2>
     <div class="prose">
-      <p>Vision-Language-Action (VLA) models provide a natural language interface to robot control, but the mapping from language to behavior is often <b>brittle and unintuitive</b>: semantically similar instructions can induce drastically different behaviors, and some capabilities may not be elicitable through prompting alone. As a result, both human instructions and zero-shot language models can fail to reliably steer VLAs toward successful task execution.</p>
-      <p>We propose a framework that <b>interactively searches</b> for language sequences that improve closed-loop VLA task performance, <b>distills</b> these sequences into a test-time language feedback policy (LFP), and learns an <b>improvement head</b> that predicts when language steering will help. Our approach operates on arbitrary frozen pre-trained VLAs &mdash; requiring neither access to the original training distribution nor fine-tuning of the underlying model. We <b>conformalize</b> the improvement head to prevent harmful steering on out-of-distribution scenarios. On seen environments, our conformalized LFP improves base VLA performance by <b>24.7% in simulation</b> and <b>65.0% on hardware</b>, with strong harmlessness guarantees under visual and semantic perturbations.</p>
+      <p>Vision-Language-Action (VLA) models let natural language serve as a flexible test-time interface to robot control. Language is appealing because it operates at a <b>higher level of abstraction</b> than low-level motor commands: if a frozen VLA already contains useful low-level skills, changing the language input can <b>elicit and compose</b> those skills without overwriting the underlying action policy. In principle, this yields better sample complexity and out-of-distribution generalization than directly fine-tuning the VLA.</p>
+      <p>In practice, though, a VLA's language-to-action mapping is often <b>brittle and unintuitive</b>: semantically similar instructions can induce drastically different behaviors, the open-vocabulary search space is combinatorially large, and some behaviors may not be steerable at all. We propose a framework that <b>interactively searches</b> for language sequences that improve closed-loop VLA performance, <b>distills</b> them into a test-time language feedback policy (LFP), and learns an <b>improvement head</b> that predicts when steering will help. We then <b>conformalize</b> the improvement head so the LFP steers only when it is reliable and otherwise falls back to the base instruction. Operating on arbitrary frozen VLAs &mdash; with no access to the original training data and no fine-tuning of the model &mdash; our conformalized LFP improves base VLA performance by <b>24.7% in simulation</b> and <b>65.0% on hardware</b>, with strong harmlessness guarantees under visual and semantic perturbations.</p>
     </div>
     <div class="contrib-grid">
       <div class="contrib-card">
-        <div class="tag">How to steer</div>
-        <div class="body">An interactive learning algorithm trains a closed-loop language feedback policy that learns <b>what to say</b> to a frozen VLA, generalizing better than VLA fine-tuning under visual/semantic perturbations and novel behavior compositions.</div>
+        <div class="tag">Steer at a higher abstraction</div>
+        <div class="body">Interactive language steering generalizes better than direct VLA fine-tuning across visual and semantic perturbations and novel behavior compositions, with <b>better sample complexity</b> &mdash; matching VLA fine-tuning using as little as one-fifth of the on-policy data.</div>
       </div>
       <div class="contrib-card">
-        <div class="tag">When not to steer</div>
-        <div class="body">A <b>conformalized improvement head</b> refuses to steer when language is unlikely to help, controlling the rate of harmful interventions out-of-distribution with a provable false-positive-rate guarantee.</div>
+        <div class="tag">Know when not to steer</div>
+        <div class="body">A <b>conformalized improvement head</b> refuses to steer when language is unlikely to help, preventing performance degradation out-of-distribution without hurting in-distribution success, with a provable false-positive-rate guarantee.</div>
       </div>
       <div class="contrib-card">
         <div class="tag">Closed-loop recovery</div>
-        <div class="body">Because feedback is issued <b>closed-loop</b>, the policy discovers recovery behaviors &mdash; re-eliciting existing low-level skills at the right time &mdash; that are not observed with open-loop prompting.</div>
+        <div class="body">Because feedback is issued <b>closed-loop</b>, the policy discovers recovery behaviors &mdash; re-eliciting existing low-level skills at the right time &mdash; that are <b>not observed with open-loop</b> prompt rephrasing.</div>
       </div>
     </div>
   </section>
@@ -271,99 +273,14 @@ footer a:hover { text-decoration: underline; }
     </div>
   </section>
 
-  <!-- CLOSED-LOOP -->
-  <section class="section" id="closedloop">
-    <h2 class="section-title">Closed-Loop Language Steering</h2>
-    <p class="section-sub">Midway through the task, a person perturbs the scene by moving a placed cube back. The base VLA continues from the original instruction and misplaces the cube; the language policy observes the changed state, emits an updated language action, and steers the frozen VLA to <b>recover</b>. (Playback is 2&times; speed.)</p>
-
-    <div class="panel">
-      <div class="panel-head">Base VLA vs. Language Steered VLA</div>
-      <div class="task-text"><b>Instruction (&ell;<sup>task</sup>):</b> "Put the green cube in the blue basket and the red cube in the orange basket."</div>
-      <div class="video-area" id="cl-video-area">
-        <div class="video-container base-label">
-          <video id="vid-base" muted playsinline preload="metadata" src="videos/basevla.mp4"></video>
-          <div class="vid-label">Base VLA</div>
-        </div>
-        <div class="video-container steer-label">
-          <video id="vid-steer" muted playsinline preload="metadata" src="videos/langpolicy.mp4"></video>
-          <div class="vid-label">Language Steered VLA (Ours)</div>
-        </div>
-      </div>
-      <div class="time-bar-wrap">
-        <button class="play-btn" id="cl-play" aria-label="Play / pause">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <input type="range" class="time-bar" id="cl-slider" min="0" max="1000" value="0" />
-        <span class="time-label" id="cl-time">0:00 / 0:00</span>
-      </div>
-    </div>
-  </section>
-
   <!-- RESULTS -->
   <section class="section" id="results">
     <h2 class="section-title">Results</h2>
-    <p class="section-sub">We evaluate in simulation (LIBERO-OOD) and on hardware (Franka Emika). Our language feedback policy <b>&pi;<sup>RFT</sup></b> (with refusal) and its calibrated variant <b>&pi;<sup>CP</sup></b> beat the base VLA, direct VLA fine-tuning (SFT VLA), the off-the-shelf VLM (Base VLM), and the narrated SFT policy (SFT VLM). <span style="color:var(--text-dim)">Hover any bar for its value &plusmn; standard error.</span></p>
+    <p class="section-sub">We evaluate in simulation (LIBERO-OOD) and on hardware (Franka Emika), asking: <b>(Q1)</b> how does language steering compare to the base VLA and direct VLA fine-tuning in in-distribution performance, out-of-distribution robustness, and sample complexity? <b>(Q2)</b> can conformal calibration prevent harmful steering? <b>(Q3)</b> is closed-loop feedback necessary, or is open-loop prompt search enough? Our LFP <b>&pi;<sup>RFT</sup></b> (with refusal) and its calibrated variant <b>&pi;<sup>CP</sup></b> are compared against the base VLA (&pi;<sup>VLA</sup>), direct VLA fine-tuning (&pi;<sup>VLA-SFT</sup>), the off-the-shelf VLM (&pi;<sup>Base</sup>), and the narrated SFT policy (&pi;<sup>SFT</sup>). <span style="color:var(--text-dim)">Hover any point or bar for its value &plusmn; standard error.</span></p>
 
-    <!-- Environments -->
-    <h3 class="subsection-title">Environments</h3>
-    <p class="subsection-sub">Training and held-out deployment environments, spanning visual (background, viewpoint, distractor) and semantic (paraphrase) perturbations, plus novel tasks.</p>
-    <div class="figcard">
-      <div class="fig-head">Simulation &mdash; LIBERO-OOD</div>
-      <div class="fig-img"><img src="assets/sim_envs.png" alt="Simulation training and deployment environments with semantic and visual perturbations." /></div>
-      <div class="fig-cap"><b>Training</b> environments (left) and <b>deployment</b> environments (right): semantic paraphrases, plus visual perturbations of background and distractor objects (ID/OOD combinations).</div>
-    </div>
-    <div class="figcard">
-      <div class="fig-head">Hardware &mdash; Franka Emika</div>
-      <div class="fig-img"><img src="assets/hardware_envs.png" alt="Hardware training tasks CubeSort, CubeMug, MarkerBlock, Microwave and novel tasks ChipsCup, MarkerBowl." /></div>
-      <div class="fig-cap"><b>Train tasks:</b> CubeSort, CubeMug, MarkerBlock, Microwave. <b>Novel tasks:</b> ChipsCup, MarkerBowl (zero-shot for our LFP).</div>
-    </div>
-
-    <!-- Simulation -->
-    <h3 class="subsection-title">Simulation (LIBERO-OOD)</h3>
-    <p class="subsection-sub">Our LFP beats every baseline in both the training environment and held-out deployment environments, learns more from the same on-policy rollouts than VLA fine-tuning, and best solves novel behavior compositions.</p>
-
-    <div class="chart-card">
-      <h3>Baselines &mdash; training vs. deployment success rate</h3>
-      <div class="chart-note">Mean success rate (%). n = 2,500 (train) / 7,500 (deploy) episodes.</div>
-      <div class="clegend" id="lg-baselines"></div>
-      <div class="chart-wrap"><canvas id="chart-baselines"></canvas></div>
-    </div>
-
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h3>On-Policy Rollout Usage</h3>
-        <div class="chart-note">Success rate vs. successful rollouts per task. n = 10,000 episodes.</div>
-        <div class="clegend" id="lg-onpolicy"></div>
-        <div class="chart-wrap" style="height:300px;"><canvas id="chart-onpolicy"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <h3>Novel Behavior Composition</h3>
-        <div class="chart-note">Unseen compositions of learned behaviors (BOOD). n = 300 episodes.</div>
-        <div class="clegend" id="lg-bood"></div>
-        <div class="chart-wrap" style="height:300px;"><canvas id="chart-bood"></canvas></div>
-      </div>
-    </div>
-
-    <!-- Hardware -->
-    <h3 class="subsection-title">Hardware (Franka Emika)</h3>
-    <p class="subsection-sub">Across four tabletop tasks and their perturbations, our LFP improves over the base VLA where steering helps, while calibration reduces harmful interventions (e.g., <b>Microwave</b>). It also generalizes zero-shot to two novel tasks. Select a task:</p>
-    <div class="chart-card">
-      <div class="seg-row" id="hw-task-row">
-        <span class="seg-label">Task</span>
-        <button class="seg active" data-task="CubeSort">CubeSort</button>
-        <button class="seg" data-task="CubeMug">CubeMug</button>
-        <button class="seg" data-task="Microwave">Microwave</button>
-        <button class="seg" data-task="MarkerBlock">MarkerBlock</button>
-        <button class="seg" data-task="Novel">Novel Tasks</button>
-      </div>
-      <h3 id="hw-title">CubeSort</h3>
-      <div class="chart-note">Success rate (%) over 30 trials per condition.</div>
-      <div class="clegend" id="lg-hardware"></div>
-      <div class="chart-wrap"><canvas id="chart-hardware"></canvas></div>
-    </div>
-
-    <h3 class="subsection-title" id="qualitative">Qualitative Results</h3>
-    <p class="subsection-sub">Each rollout pair shows <b>base VLA failure</b> (left) and <b>language steered VLA success</b> (right) for the selected task and perturbation. Select a task, then a condition.</p>
+    <!-- Qualitative hardware rollouts -->
+    <h3 class="subsection-title" id="qualitative">Qualitative Hardware Rollouts</h3>
+    <p class="subsection-sub">Each pair shows <b>base VLA failure</b> (left) and <b>language steered VLA success</b> (right) for the selected hardware task and perturbation. Choose a task, then a perturbation condition.</p>
     <div class="qual-tabs-wrap">
       <div class="phase-tabs" id="qual-task-tabs">
         <button class="phase-tab active" data-slug="cubesort">CubeSort</button>
@@ -401,6 +318,79 @@ footer a:hover { text-decoration: underline; }
         <span class="time-label" id="qual-time">0:00 / 0:00</span>
       </div>
     </div>
+
+    <!-- Closed-loop recovery video -->
+    <h3 class="subsection-title" id="closedloop">Closed-Loop Recovery</h3>
+    <p class="subsection-sub">Closed-loop steering provides robustness to <b>adversarial mid-task perturbations</b>. After the robot correctly places the green cube, a person moves it back into the scene. The base VLA continues from the original instruction and misplaces the cube, while &pi;<sup>RFT</sup> observes the changed state, emits an updated language action &ell;<sub>t</sub> (&ldquo;Put the green block in the blue bin&rdquo;), and steers the frozen VLA to <b>recover</b> &mdash; a behavior not seen with open-loop prompting. (Playback 2&times;.)</p>
+    <div class="panel">
+      <div class="panel-head">Base VLA vs. Language Steered VLA</div>
+      <div class="task-text"><b>Instruction (&ell;<sup>task</sup>):</b> "Put the green cube in the blue basket and the red cube in the orange basket."</div>
+      <div class="video-area" id="cl-video-area">
+        <div class="video-container base-label">
+          <video id="vid-base" muted playsinline preload="metadata" src="videos/basevla.mp4"></video>
+          <div class="vid-label">Base VLA</div>
+        </div>
+        <div class="video-container steer-label">
+          <video id="vid-steer" muted playsinline preload="metadata" src="videos/langpolicy.mp4"></video>
+          <div class="vid-label">Language Steered VLA (Ours)</div>
+        </div>
+      </div>
+      <div class="time-bar-wrap">
+        <button class="play-btn" id="cl-play" aria-label="Play / pause">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <input type="range" class="time-bar" id="cl-slider" min="0" max="1000" value="0" />
+        <span class="time-label" id="cl-time">0:00 / 0:00</span>
+      </div>
+    </div>
+
+    <!-- Simulation -->
+    <h3 class="subsection-title">Simulation (LIBERO-OOD)</h3>
+    <p class="subsection-sub">In simulation we steer a &pi;<sub>0.5</sub> VLA fine-tuned on LIBERO. We report mean success rate with standard error, pooled over 200 visual&times;semantic perturbation combinations.</p>
+
+    <div class="chart-card">
+      <h3>Baselines &mdash; training vs. deployment success rate</h3>
+      <div class="chart-note">Each point is a method: x = language-policy training success, y = held-out deployment success (up &amp; right is better). Bars are standard error. n = 2,500 (train) / 7,500 (deploy) episodes.</div>
+      <div class="clegend" id="lg-baselines"></div>
+      <div class="chart-wrap"><canvas id="chart-baselines"></canvas></div>
+      <div class="chart-desc">Each method is shown in the LFP <b>training</b> environment vs. <b>held-out deployment</b> environments. The narrated policy &pi;<sup>SFT</sup> improves training success but <b>degrades</b> deployment success &mdash; narration alone is not enough for robustness. Interactive search and calibration recover it: <b>&pi;<sup>RFT</sup></b> and <b>&pi;<sup>CP</sup></b> outperform every baseline, while direct fine-tuning (&pi;<sup>VLA-SFT</sup>) helps only in training-like conditions. Absolute success is higher in deployment because LIBERO-10 is near-saturated for the base VLA.</div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>On-Policy Rollout Usage</h3>
+        <div class="chart-note">Success rate vs. successful on-policy rollouts per task. n = 10,000 episodes.</div>
+        <div class="clegend" id="lg-onpolicy"></div>
+        <div class="chart-wrap" style="height:300px;"><canvas id="chart-onpolicy"></canvas></div>
+        <div class="chart-desc">A favorable <b>exchange rate</b> for language steering: <b>&pi;<sup>RFT</sup></b> trained on only <span class="hl">10</span> successful rollouts already matches or exceeds &pi;<sup>VLA-SFT</sup> trained on <span class="hl">50</span> &mdash; <b>one-fifth</b> the fine-tuning data. &pi;<sup>VLA-SFT</sup> plateaus by 50 rollouts while &pi;<sup>RFT</sup> keeps improving, since adapting the language interface uses data more efficiently than fine-tuning the action policy.</div>
+      </div>
+      <div class="chart-card">
+        <h3>Novel Behavior Composition</h3>
+        <div class="chart-note">Unseen compositions of learned behaviors (Compose). n = 300 episodes.</div>
+        <div class="clegend" id="lg-bood"></div>
+        <div class="chart-wrap" style="height:300px;"><canvas id="chart-bood"></canvas></div>
+        <div class="chart-desc"><b>&pi;<sup>RFT</sup></b> steers the frozen VLA to solve unseen <b>Compose</b> tasks (novel combinations of learned behaviors), whereas direct VLA fine-tuning slightly degrades over the base VLA.</div>
+      </div>
+    </div>
+
+    <!-- Hardware -->
+    <h3 class="subsection-title">Hardware (Franka Emika)</h3>
+    <p class="subsection-sub">On hardware we steer a &pi;<sub>0.5</sub> VLA zero-shot (no fine-tuning) across four tabletop tasks and two novel tasks, each with visual (VOOD) and semantic (SOOD) perturbations. Select a task:</p>
+    <div class="chart-card">
+      <div class="seg-row" id="hw-task-row">
+        <span class="seg-label">Task</span>
+        <button class="seg active" data-task="CubeSort">CubeSort</button>
+        <button class="seg" data-task="CubeMug">CubeMug</button>
+        <button class="seg" data-task="Microwave">Microwave</button>
+        <button class="seg" data-task="MarkerBlock">MarkerBlock</button>
+        <button class="seg" data-task="Novel">Novel Tasks</button>
+      </div>
+      <h3 id="hw-title">CubeSort</h3>
+      <div class="chart-note">Success rate (%) over 30 trials per condition.</div>
+      <div class="clegend" id="lg-hardware"></div>
+      <div class="chart-wrap"><canvas id="chart-hardware"></canvas></div>
+      <div class="chart-desc"><b>&pi;<sup>RFT</sup></b> improves over the base VLA on the steerable tasks (CubeSort, CubeMug, MarkerBlock). On the less-steerable <b>Microwave</b>, uncalibrated steering can hurt under perturbation, but <b>&pi;<sup>CP</sup></b> refuses harmful interventions and recovers performance above the base VLA. On the two <b>novel</b> tasks, &pi;<sup>RFT</sup> transfers zero-shot, beating both the base VLA and &pi;<sup>SFT</sup>.</div>
+    </div>
   </section>
 
   <!-- REFUSAL / CALIBRATION -->
@@ -418,12 +408,14 @@ footer a:hover { text-decoration: underline; }
       </div>
       <div class="clegend" id="lg-refusal"></div>
       <div class="chart-wrap" style="height:300px;"><canvas id="chart-refusal"></canvas></div>
+      <div class="chart-desc">Refusing to steer when language is harmful <b>improves success</b>. Without refusal, &pi;<sup>NR</sup> reaches 70.93%; adding refusal (&pi;<sup>RFT</sup>) raises it to 74.96%, and conformal calibration (&pi;<sup>CP</sup>) to 75.96%. Toggle to <b>False Positive Rate</b> to see calibration cut harmful steering from 38.92% to <b>9.31%</b> at the &alpha;&nbsp;=&nbsp;0.10 target.</div>
     </div>
 
     <div class="chart-card">
       <h3>Calibration tracks the target false-positive rate</h3>
       <div class="chart-note">Reliability diagram: empirical FPR vs. target &alpha;, averaged over 5 randomized calibration/test splits.</div>
       <div class="chart-wrap" style="height:320px;"><canvas id="chart-reliability"></canvas></div>
+      <div class="chart-desc">As we sweep the target &alpha;, the <b>empirical FPR tracks the diagonal</b> (FPR&nbsp;=&nbsp;&alpha;), confirming the class-conditional conformal guarantee that harmful steering is bounded by &alpha;. The uncalibrated policy instead sits far above the diagonal at a fixed 38.92% FPR.</div>
     </div>
 
     <div class="tbl-wrap">
@@ -799,23 +791,104 @@ function barOpts(yMin, yMax, yTitle) {
   };
 }
 
-// ── Simulation: 2D Baselines (train vs deploy) ──
+// ── Simulation: 2D Baselines (training vs deployment success) ──
 (function () {
-  const el = document.getElementById('chart-baselines'); if (!el) return;
+  const el = document.getElementById('chart-baselines'); if (!el || typeof Chart === 'undefined') return;
+  // x = language-policy training SR, y = deployment SR (mirrors paper Fig. baselines, left panel)
   const M = [
-    { l: 'Base VLA', c: COL.base,   tr: 51.16, trE: 1.00, dp: 76.29, dpE: 0.49 },
-    { l: 'Base VLM', c: COL.vlm,    tr: 53.08, trE: 1.00, dp: 75.87, dpE: 0.49 },
-    { l: 'SFT VLA',  c: COL.sftvla, tr: 60.64, trE: 0.98, dp: 73.84, dpE: 0.51 },
-    { l: 'SFT VLM',  c: COL.sftvlm, tr: 55.04, trE: 0.99, dp: 72.55, dpE: 0.52 },
-    { l: 'Ours: π^RFT', c: COL.rft, tr: 63.88, trE: 0.96, dp: 78.65, dpE: 0.47 },
-    { l: 'Ours: π^CP',  c: COL.cp,  tr: 63.80, trE: 0.96, dp: 80.01, dpE: 0.46 },
+    { key: 'vla',    label: 'π^VLA',        short: 'Base VLA',             c: COL.base,   x: 51.16, xe: 1.00, y: 76.29, ye: 0.49, side: 'left',  dy: -2  },
+    { key: 'base',   label: 'π^VLA∘π^Base', short: 'Base VLM',             c: COL.vlm,    x: 53.08, xe: 1.00, y: 75.87, ye: 0.49, side: 'right', dy: -12 },
+    { key: 'sft',    label: 'π^VLA∘π^SFT',  short: 'Narrated SFT',         c: COL.sftvlm, x: 55.04, xe: 0.99, y: 72.55, ye: 0.52, side: 'left',  dy: 16  },
+    { key: 'vlasft', label: 'π^VLA-SFT',    short: 'Direct VLA fine-tune', c: COL.sftvla, x: 60.64, xe: 0.98, y: 73.84, ye: 0.51, side: 'right', dy: 14  },
+    { key: 'rft',    label: 'π^VLA∘π^RFT',  short: 'Ours (RFT)',           c: COL.rft,    x: 63.88, xe: 0.96, y: 78.65, ye: 0.47, side: 'left',  dy: -12 },
+    { key: 'cp',     label: 'π^VLA∘π^CP',   short: 'Ours (CP)',            c: COL.cp,     x: 63.80, xe: 0.96, y: 80.01, ye: 0.46, side: 'left',  dy: -12 },
   ];
+  const byKey = k => M.find(m => m.key === k);
+  const pt = m => ({ x: m.x, y: m.y });
+
+  function drawMethodLabel(ctx, text, anchorX, anchorY, color, side) {
+    const baseFont = '600 12px "Noto Sans", system-ui, sans-serif';
+    const supFont = '600 9px "Noto Sans", system-ui, sans-serif';
+    const segs = text.split('∘').map((p, i) => { const a = p.split('^'); return { base: (i > 0 ? '∘' : '') + a[0], sup: a[1] || '' }; });
+    let w = 0;
+    segs.forEach(s => { ctx.font = baseFont; w += ctx.measureText(s.base).width; if (s.sup) { ctx.font = supFont; w += ctx.measureText(s.sup).width; } });
+    let x = side === 'right' ? anchorX : anchorX - w;
+    ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    segs.forEach(s => {
+      ctx.font = baseFont; ctx.fillText(s.base, x, anchorY); x += ctx.measureText(s.base).width;
+      if (s.sup) { ctx.font = supFont; ctx.fillText(s.sup, x, anchorY - 5); x += ctx.measureText(s.sup).width; }
+    });
+  }
+
+  function drawArrow(ctx, x1, y1, x2, y2, color, lw) {
+    const len = Math.hypot(x2 - x1, y2 - y1); if (!len) return;
+    const ux = (x2 - x1) / len, uy = (y2 - y1) / len, r = 9, head = 9;
+    const ax = x1 + ux * r, ay = y1 + uy * r, bx = x2 - ux * r, by = y2 - uy * r;
+    const ang = Math.atan2(by - ay, bx - ax);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx, by);
+    ctx.lineTo(bx - head * Math.cos(ang - Math.PI / 6), by - head * Math.sin(ang - Math.PI / 6));
+    ctx.lineTo(bx - head * Math.cos(ang + Math.PI / 6), by - head * Math.sin(ang + Math.PI / 6));
+    ctx.closePath(); ctx.fill();
+  }
+  const CHAIN = ['base', 'sft', 'rft', 'cp'];
+
+  const anno = {
+    id: 'baselinesAnno',
+    beforeDatasetsDraw(chart) {
+      const ctx = chart.ctx, sx = chart.scales.x, sy = chart.scales.y;
+      ctx.save();
+      for (let i = 0; i < CHAIN.length - 1; i++) {
+        const a = byKey(CHAIN[i]), b = byKey(CHAIN[i + 1]);
+        drawArrow(ctx, sx.getPixelForValue(a.x), sy.getPixelForValue(a.y), sx.getPixelForValue(b.x), sy.getPixelForValue(b.y), b.c, 2);
+      }
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx, sx = chart.scales.x, sy = chart.scales.y;
+      ctx.save();
+      chart.data.datasets.forEach(d => {
+        const m = d._method; if (!m) return;
+        const px = sx.getPixelForValue(m.x), py = sy.getPixelForValue(m.y);
+        ctx.strokeStyle = m.c; ctx.globalAlpha = 0.4; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(px, sy.getPixelForValue(m.y + m.ye)); ctx.lineTo(px, sy.getPixelForValue(m.y - m.ye)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx.getPixelForValue(m.x - m.xe), py); ctx.lineTo(sx.getPixelForValue(m.x + m.xe), py); ctx.stroke();
+        ctx.globalAlpha = 1;
+        drawMethodLabel(ctx, m.label, m.side === 'right' ? px + 9 : px - 9, py + m.dy, m.c, m.side);
+      });
+      ctx.restore();
+    }
+  };
+
+  const points = M.map(m => ({
+    label: m.short, data: [pt(m)], _method: m,
+    backgroundColor: m.c, borderColor: '#fff', borderWidth: 1.5,
+    pointRadius: 6, pointHoverRadius: 8,
+  }));
+
   new Chart(el, {
-    type: 'bar',
-    data: { labels: ['Training Env', 'Deployment Env'], datasets: M.map(m => ds(m.l, m.c, [m.tr, m.dp], [m.trE, m.dpE])) },
-    options: barOpts(45, 85, 'success rate (%)')
+    type: 'scatter',
+    data: { datasets: points },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 12, right: 20, left: 4 } },
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          filter: it => !it.dataset._connector,
+          callbacks: { label(c) { const m = c.dataset._method; return m ? ` ${m.short}: train ${m.x.toFixed(1)}%, deploy ${m.y.toFixed(1)}%` : ''; } }
+        }
+      },
+      scales: {
+        x: { type: 'linear', min: 48, max: 67, title: { display: true, text: 'language policy training success rate (%)' }, ticks: { callback: pct } },
+        y: { min: 70, max: 82, title: { display: true, text: 'deployment success rate (%)' }, ticks: { callback: pct } }
+      }
+    },
+    plugins: [anno]
   });
-  htmlLegend('lg-baselines', M.map(m => ({ label: m.l, color: m.c })));
+  htmlLegend('lg-baselines', M.map(m => ({ label: m.label, color: m.c })));
 })();
 
 // ── Simulation: On-Policy Rollout Usage ──
@@ -902,7 +975,7 @@ function barOpts(yMin, yMax, yTitle) {
 (function () {
   const el = document.getElementById('chart-refusal'); if (!el) return;
   const METH = [
-    { l: 'No refusal', c: COL.sftvla },
+    { l: 'π^NR (no refusal)', c: COL.sftvla },
     { l: 'π^RFT (refusal)', c: COL.rft },
     { l: 'π^CP (α=0.10)', c: COL.cp },
   ];
