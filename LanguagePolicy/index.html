@@ -891,21 +891,54 @@ function barOpts(yMin, yMax, yTitle) {
   htmlLegend('lg-baselines', M.map(m => ({ label: m.label, color: m.c })));
 })();
 
-// ── Simulation: On-Policy Rollout Usage ──
+// ── Simulation: On-Policy Rollout Usage (2D line, mirrors paper ftdata) ──
 (function () {
-  const el = document.getElementById('chart-onpolicy'); if (!el) return;
+  const el = document.getElementById('chart-onpolicy'); if (!el || typeof Chart === 'undefined') return;
+  const SERIES = [
+    { label: 'π^VLA-SFT',    c: COL.sftvla, style: 'rect',   pts: [{ x: 10, y: 68.24, se: 0.47 }, { x: 30, y: 70.56, se: 0.46 }, { x: 50, y: 70.54, se: 0.46 }] },
+    { label: 'π^VLA∘π^RFT', c: COL.rft,    style: 'circle', pts: [{ x: 10, y: 71.98, se: 0.45 }, { x: 30, y: 73.15, se: 0.44 }, { x: 50, y: 74.96, se: 0.43 }] },
+  ];
+  // translucent confidence band drawn behind the lines
+  const band = {
+    id: 'onpolicyBand',
+    beforeDatasetsDraw(chart) {
+      const ctx = chart.ctx, sx = chart.scales.x, sy = chart.scales.y;
+      ctx.save();
+      chart.data.datasets.forEach(d => {
+        const s = d._series; if (!s) return;
+        ctx.beginPath();
+        s.pts.forEach((p, i) => { const X = sx.getPixelForValue(p.x), Y = sy.getPixelForValue(p.y + p.se); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+        for (let i = s.pts.length - 1; i >= 0; i--) { const p = s.pts[i]; ctx.lineTo(sx.getPixelForValue(p.x), sy.getPixelForValue(p.y - p.se)); }
+        ctx.closePath(); ctx.fillStyle = s.c + '26'; ctx.fill();
+      });
+      ctx.restore();
+    }
+  };
   new Chart(el, {
-    type: 'bar',
+    type: 'line',
     data: {
-      labels: ['10', '30', '50'],
-      datasets: [
-        ds('SFT VLA', COL.sftvla, [68.24, 70.56, 70.54], [0.47, 0.46, 0.46]),
-        ds('Ours: π^RFT', COL.rft, [71.98, 73.15, 74.96], [0.45, 0.44, 0.43]),
-      ]
+      datasets: SERIES.map(s => ({
+        label: s.label, data: s.pts.map(p => ({ x: p.x, y: p.y })), _series: s,
+        borderColor: s.c, backgroundColor: s.c, borderWidth: 2.5, tension: 0, fill: false,
+        pointStyle: s.style, pointRadius: 5, pointHoverRadius: 7, pointBorderColor: '#fff', pointBorderWidth: 1,
+      }))
     },
-    options: (function () { const o = barOpts(64, 78, 'success rate (%)'); o.scales.x = { title: { display: true, text: 'on-policy rollouts per task' } }; return o; })()
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 8, right: 14 } },
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { title: items => `${items[0].parsed.x} rollouts/task`, label(c) { const s = c.dataset._series; const p = s.pts[c.dataIndex]; return ` ${s.label.replace(/\^/g, '')}: ${p.y.toFixed(1)}% ± ${p.se.toFixed(2)}`; } } }
+      },
+      scales: {
+        x: { type: 'linear', min: 5, max: 55, title: { display: true, text: 'on-policy rollouts per task' }, afterBuildTicks: s => { s.ticks = [{ value: 10 }, { value: 30 }, { value: 50 }]; }, ticks: { autoSkip: false, callback: v => v } },
+        y: { min: 66, max: 76, title: { display: true, text: 'success rate (%)' }, ticks: { callback: pct } }
+      }
+    },
+    plugins: [band]
   });
-  htmlLegend('lg-onpolicy', [{ label: 'SFT VLA', color: COL.sftvla }, { label: 'Ours: π^RFT', color: COL.rft }]);
+  htmlLegend('lg-onpolicy', SERIES.map(s => ({ label: s.label, color: s.c })));
 })();
 
 // ── Simulation: BOOD novel composition ──
